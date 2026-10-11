@@ -150,12 +150,10 @@ router.get('/api', async (ctx) => {
     }
 
     // 尝试从多个可能的位置获取歌曲列表
-    let songList = rawResult?.data?.song?.list 
-                || rawResult?.data?.list 
-                || rawResult?.song?.list 
-                || rawResult?.list 
-                || [];
-
+let songList = rawResult?.response?.data?.song?.list || 
+               rawResult?.data?.song?.list || 
+               rawResult?.data?.list || 
+               rawResult?.list || [];
     console.log('==== 提取到的歌曲数量 ====', songList.length);
     
     // 4. 把数据转换成音乐 App 需要的 Meting-API 格式
