@@ -136,13 +136,27 @@ router.get('/api', async (ctx) => {
     // 我们直接修改请求的 query 参数，这样 getTypedQuery 就能正常读取了
     ctx.request.query = { ...ctx.request.query, key: String(id || ''), limit: '30', page: '1', catZhida: '0' };
 
-    // 2. 调用你现成的控制器去搜索
+// 2. 调用你现成的控制器去搜索
     await context.getSearchByKey(ctx);
     
-    // 3. 此时 ctx.body 里已经是搜索后的结果了
-    // 通常 QQ音乐 API 返回的数据结构是 ctx.body.data.song.list
-    const rawResult = ctx.body as any;
-    const songList = rawResult?.data?.song?.list || [];
+    // ⚠️ 新增：打印原始数据，看看它到底长啥样
+    console.log('==== 服务器拿到原始数据 ====');
+    console.log(JSON.stringify(ctx.body).substring(0, 1000));
+
+    // 3. 尝试兼容多种可能的数据结构
+    let rawResult = ctx.body as any;
+    if (typeof rawResult === 'string') {
+      try { rawResult = JSON.parse(rawResult); } catch (e) {}
+    }
+
+    // 尝试从多个可能的位置获取歌曲列表
+    let songList = rawResult?.data?.song?.list 
+                || rawResult?.data?.list 
+                || rawResult?.song?.list 
+                || rawResult?.list 
+                || [];
+
+    console.log('==== 提取到的歌曲数量 ====', songList.length);
     
     // 4. 把数据转换成音乐 App 需要的 Meting-API 格式
     const metingData = songList.map((song: any) => ({
@@ -155,7 +169,6 @@ router.get('/api', async (ctx) => {
 
     // 5. 返回给音乐 App
     ctx.body = metingData;
-
   } catch (error) {
     console.error('Meting API 转换出错:', error);
     ctx.status = 500;
