@@ -120,4 +120,48 @@ router.get('/getTicketInfo', context.getTicketInfo);
 // getImageUrl
 router.get('/getImageUrl', context.getImageUrl);
 
+// ================= 自定义音乐源适配器 =================
+router.get('/api', async (ctx) => {
+  const { server, type, id } = ctx.query;
+
+  // 只处理 QQ音乐 (tencent) 的搜索
+  if (server !== 'tencent' || type !== 'search') {
+    ctx.status = 400;
+    ctx.body = [];
+    return;
+  }
+
+  try {
+    // 1. 把 App 传来的 id 参数，伪装成 getSearchByKey 需要的 key 参数
+    // 我们直接修改请求的 query 参数，这样 getTypedQuery 就能正常读取了
+    ctx.request.query = { ...ctx.request.query, key: String(id || ''), limit: '30', page: '1', catZhida: '0' };
+
+    // 2. 调用你现成的控制器去搜索
+    await context.getSearchByKey(ctx);
+    
+    // 3. 此时 ctx.body 里已经是搜索后的结果了
+    // 通常 QQ音乐 API 返回的数据结构是 ctx.body.data.song.list
+    const rawResult = ctx.body as any;
+    const songList = rawResult?.data?.song?.list || [];
+    
+    // 4. 把数据转换成音乐 App 需要的 Meting-API 格式
+    const metingData = songList.map((song: any) => ({
+      name: song.name, // 歌曲名
+      artist: song.singer?.map((s: any) => s.name).join(' / '), // 歌手
+      url: song.mid, // 歌曲ID（App会拿这个去请求播放链接）
+      pic: `https://y.gtimg.cn/music/photo_new/T002R300x300M000${song.album?.mid}.jpg`, // 封面图
+      lrc: `https://c.y.qq.com/lyric/fcgi-bin/fcg_query_lyric_new.fcg?songmid=${song.mid}&format=json&nobase64=1` // 歌词接口
+    }));
+
+    // 5. 返回给音乐 App
+    ctx.body = metingData;
+
+  } catch (error) {
+    console.error('Meting API 转换出错:', error);
+    ctx.status = 500;
+    ctx.body = [];
+  }
+});
+// =======================================================
+
 export default router;
