@@ -122,7 +122,15 @@ router.get('/getImageUrl', context.getImageUrl);
 
 // ================= 自定义音乐源适配器 =================
 router.get('/api', async (ctx) => {
-  const { server, type, id } = ctx.query;
+  // 获取所有可能的参数
+  let { server, type, id, source, types, name, count, pages } = ctx.query;
+
+  // 兼容 GD 音乐台 API 格式
+  if (types === 'search') {
+    server = source as string;
+    type = types as string;
+    id = name as string;
+  }
 
   // 只处理 QQ音乐 (tencent) 的搜索
   if (server !== 'tencent' || type !== 'search') {
