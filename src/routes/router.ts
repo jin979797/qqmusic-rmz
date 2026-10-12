@@ -169,7 +169,7 @@ let songList = rawResult?.response?.data?.song?.list ||
     ctx.body = metingData;
   } catch (error) {
     console.error('Meting API 转换出错:', error);
-    ctx.status = 500;
+    ctx.status = 200;
     ctx.body = [];
   }
 });
